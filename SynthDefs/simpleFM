@@ -1,3 +1,6 @@
+// Rumush
+// Feel free to change and use the code below, if you manage to get something cool out of it, let me know :) Cheers!
+
 (
 SynthDef(\carrier, {
 	|inbus = 2, outbus = 0,
