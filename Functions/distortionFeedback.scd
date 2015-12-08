@@ -1,5 +1,5 @@
 (// Careful it can get loud!
-Ndef(\fdbk2, {
+Ndef(\fdbk1, {
 	var src, sr1, sr2, sr3, loc, freq, rt;
 	src = Saw.ar([60,60.5,61]*XLine.ar(1,8,4),0.05).sum; // Simple detuned saw with freq envelope
 	loc = LocalIn.ar(2)+src;
@@ -15,6 +15,27 @@ Ndef(\fdbk2, {
 	// Feedback Gain
 	LocalOut.ar(loc*25);
 	loc = LPF.ar(loc.tanh,5000);
+
+	loc*0.75
+}).play
+)
+(
+Ndef(\fdbk2, {
+	var src, sr1, sr2, sr3, sr4, loc, rt, step;
+	step = Stepper.ar(Impulse.ar(0.5),0,1,LFPulse.ar(0.75)*9+8,5); // Steps for pitch manipulation
+	src = Saw.ar(LFNoise1.ar(0.5*step,100,200*(step%3)),0.05); // Source; Pitch Controlled by LFNoise1 and Stepper
+	loc = LocalIn.ar(2)+src; // Beginning of a loop
+	loc = DelayC.ar(loc,8,4); // 4 Sec Delay
+	// Allpass Network - Source http://sccode.org/1-j
+	2.do{loc=AllpassL.ar(loc,0.3,{0.29.rand+SinOsc.ar(0.5.rand,0,0.01).abs}!2,5)}; // Allpass Network
+	loc = FreqShift.ar(loc,-25);
+	loc = LPF.ar(loc,5000);
+	loc = HPF.ar(loc,50);
+	// loc = loc.softclip;
+	loc = loc.tanh;
+	// Feedback Gain
+	LocalOut.ar(loc*2);
+	loc = LPF.ar(Limiter.ar(loc),5000);
 
 	loc*0.75
 }).play
