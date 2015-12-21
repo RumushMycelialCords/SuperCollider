@@ -1,0 +1,105 @@
+MIDIIn.connectAll
+(
+SynthDef(\tone1, {
+	arg gate = 1, freq = 440, out = 2, index=100, modMix = 0, dur;
+	var env = EnvGen.ar(Env.linen(0.0005, dur-0.001, 0.0005, IRand(-8,-4)), gate, doneAction:2);
+	var mod = (SinOsc.ar(freq*Rand(0.25,2),0,index-(index*modMix))+HenonC.ar(freq*IRand(4,8),mul:index*modMix)).softclip;
+	var src = SinOsc.ar(freq+mod,0,0.25);
+
+	Out.ar([out, out+1], src*env)
+}).add;
+SynthDef(\grain1, {
+	arg gate = 1, out = 2, dur, freq=16, lfo=2, lfo2=1;
+	var env = EnvGen.ar(Env.linen(0.0005, dur-0.001, 0.0005, IRand(-8,4)), gate, doneAction:2);
+	var src = GrainBuf.ar(2, Impulse.ar(freq), LFNoise0.ar(lfo).range(0.005,0.05), ~buf1.readChannel,
+		LFNoise0.ar(lfo2).range(-1,1), 0, 2, 0, -1, 1024);
+	Out.ar(out, src*env)
+}).add;
+Pdef(\seq1,
+	Pbind(\instrument, \tone1,
+		\dur, Prand([0.125,0.125,0.25],inf),
+		\freq, Pwhite(250,2500,inf),
+		\index, Pwhite(100,1000,inf),
+		\modMix, Pwhite(0.0,1.0,inf),
+		\out, Prand([2, 4, 6], inf)
+)).play;
+Pdef(\seq2,
+	Pbind(\instrument, \grain1,
+		\dur, Prand([4,2,2],inf),
+		\freq, Pwhite(1,128,inf),
+		\lfo, Pwhite(0.5,16,inf),
+		\lfo2, Pwhite(0.25,1,inf),
+		\out, Prand([2, 4, 6], inf)
+)).play;
+~len = 2;
+~buf1 = Buffer.alloc(s, s.sampleRate*~len, 2);
+~buf2 = Buffer.alloc(s, s.sampleRate*~len, 2);
+~buf3 = Buffer.alloc(s, s.sampleRate*~len, 2);
+~buf4 = Buffer.alloc(s, s.sampleRate*~len, 2);
+Ndef(\rd1, {
+	arg note=36, vol = 0, rt = 1, rAmt = 0;
+	var rate = rt.linlin(0,127,-1.0,1.0).round(0.5);
+	var bufWr = Phasor.ar(0,1,0,s.sampleRate*(~len-(~len*rAmt.linlin(0,127,0.0,1.0))))+(LFNoise0.ar(0.2).abs*(~len*rAmt.linlin(0,127,0.0,1.0)));
+	var src = BufRd.ar(2,~buf1,Phasor.ar(0,rate,0,s.sampleRate*~len));
+	BufWr.ar(In.ar(2,2)*vol+src,~buf1,bufWr);
+	src
+});
+Ndef(\rd2, {
+	arg note=36, vol = 0, rt = 1, rAmt = 0;
+	var rate = rt.linlin(0,127,-1.0,1.0).round(0.5);
+	var bufWr = Phasor.ar(0,1,0,s.sampleRate*(~len-(~len*rAmt.linlin(0,127,0.0,1.0))))+(LFNoise0.ar(0.2).abs*(~len*rAmt.linlin(0,127,0.0,1.0)));
+	var src = BufRd.ar(2,~buf1,Phasor.ar(0,rate,0,s.sampleRate*~len));
+	BufWr.ar(In.ar(4,2)*vol+src,~buf1,bufWr);
+	src
+});
+Ndef(\rd3, {
+	arg note=36, vol = 0, rt = 1, rAmt = 0;
+	var rate = rt.linlin(0,127,-1.0,1.0).round(0.5);
+	var bufWr = Phasor.ar(0,1,0,s.sampleRate*(~len-(~len*rAmt.linlin(0,127,0.0,1.0))))+(LFNoise0.ar(0.2).abs*(~len*rAmt.linlin(0,127,0.0,1.0)));
+	var src = BufRd.ar(2,~buf1,Phasor.ar(0,rate,0,s.sampleRate*~len));
+	BufWr.ar(In.ar(6,2)*vol+src,~buf1,bufWr);
+	src
+});
+Ndef(\rd4, {
+	arg note=36, vol = 0, rt = 1, rAmt = 0;
+	var rate = rt.linlin(0,127,-1.0,1.0).round(0.5);
+	var bufWr = Phasor.ar(0,1,0,s.sampleRate*(~len-(~len*rAmt.linlin(0,127,0.0,1.0))))+(LFNoise0.ar(0.2).abs*(~len*rAmt.linlin(0,127,0.0,1.0)));
+	var src = BufRd.ar(2,~buf1,Phasor.ar(0,rate,0,s.sampleRate*~len));
+	BufWr.ar(In.ar(8,2)*vol+src,~buf1,bufWr);
+	src
+});
+MIDIdef.noteOn(\notes, {arg ...args; args.postln;
+	Ndef(\rd1).set(\note, args[1]);
+	Ndef(\rd2).set(\note, args[1]);
+	Ndef(\rd3).set(\note, args[1]);
+	Ndef(\rd4).set(\note, args[1])
+});
+MIDIdef.cc(\vol, {arg ...args; args.postln;
+	switch(args[1],
+		0, {Ndef(\rd1).set(\vol, args[0]/4)};
+		1, {Ndef(\rd2).set(\vol, args[0]/4)};
+		2, {Ndef(\rd3).set(\vol, args[0]/4)};
+		3, {Ndef(\rd4).set(\vol, args[0]/4)}
+	);
+},(0..3)); // match cc 0 to 3
+MIDIdef.cc(\rate, {arg ...args; args.postln;
+	switch(args[1],
+		8, {
+			Ndef(\rd1).set(\rt, args[0]);
+			Ndef(\rd2).set(\rt, args[0]);
+			Ndef(\rd3).set(\rt, args[0]);
+			Ndef(\rd4).set(\rt, args[0])
+		},
+		9, {
+			Ndef(\rd1).set(\rAmt, args[0]);
+			Ndef(\rd1).set(\rAmt, args[0]);
+			Ndef(\rd1).set(\rAmt, args[0]);
+			Ndef(\rd1).set(\rAmt, args[0])
+		}
+	);
+},(8..11)); // match cc 8 to 11
+Ndef(\rd1).play;
+Ndef(\rd2).play;
+Ndef(\rd3).play;
+Ndef(\rd4).play
+)
